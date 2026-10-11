@@ -61,31 +61,57 @@ public class OBLInitializer {
         return pool;
     }
 
+    /*
+      Generates the 100 OBL candidate schedules wrapped as Schedule objects.
+     */
+    public static org.cloudscheduler.model.Schedule[] generateOBLPoolAsSchedules(Random random) {
+        int[][] rawPool = generateOBLPool(random);
+        org.cloudscheduler.model.Schedule[] schedules = new org.cloudscheduler.model.Schedule[rawPool.length];
+        for (int i = 0; i < rawPool.length; i++) {
+            schedules[i] = new org.cloudscheduler.model.Schedule(rawPool[i]);
+        }
+        return schedules;
+    }
+
     // Overloaded convenience method using project default parameters.
     public static int[][] generateOBLPool(Random random) {
         return generateOBLPool(DEFAULT_RANDOM_COUNT, DEFAULT_NUM_TASKS, DEFAULT_MIN_VM, DEFAULT_MAX_VM, random);
     }
 
-    public static void main(String[] args) {
-        // Set fixed seed (42) for reproducible demonstration
+        public static void main(String[] args) {
         Random rng = new Random(42);
-        System.out.println("=== Running OBL Initializer Verification ===");
-        int[][] pool = generateOBLPool(rng);
-        System.out.println("Total schedules generated: " + pool.length);
-        System.out.println("Tasks per schedule: " + pool[0].length);
-        // Verification: display first random schedule and its exact opposite
-        int[] firstRandom = pool[0];
-        int[] firstOpposite = pool[DEFAULT_RANDOM_COUNT];
-        System.out.println("\nSample Random Schedule   (Candidate 0) : " + Arrays.toString(firstRandom));
-        System.out.println("Sample Opposite Schedule (Candidate 50): " + Arrays.toString(firstOpposite));
-        // Sanity check: sum of each gene pair must equal (Min_VM + Max_VM = 4)
-        boolean isMathValid = true;
-        for (int j = 0; j < firstRandom.length; j++) {
-            if (firstRandom[j] + firstOpposite[j] != (DEFAULT_MIN_VM + DEFAULT_MAX_VM)) {
-                isMathValid = false;
-                break;
-            }
-        }
-        System.out.println("\nMathematical Validation: " + (isMathValid ? "PASSED (all pairs sum to 4)" : "FAILED"));
+
+        // 1. Synthetic dataset matching the paper (10 tasks between 10-100s, 5 VMs between 0.8-1.2)
+        double[] taskDurations = {22, 99, 62, 21, 70, 98, 12, 54, 33, 43}; // 10 tasks
+        org.cloudscheduler.model.VMInfo[] vms = new org.cloudscheduler.model.VMInfo[] {
+            new org.cloudscheduler.model.VMInfo(0, 1.01),
+            new org.cloudscheduler.model.VMInfo(1, 0.96),
+            new org.cloudscheduler.model.VMInfo(2, 0.97),
+            new org.cloudscheduler.model.VMInfo(3, 1.00),
+            new org.cloudscheduler.model.VMInfo(4, 0.86)
+        };
+
+        System.out.println("=== 1. Step A: OBL Pool Generation ===");
+        org.cloudscheduler.model.Schedule[] pool = generateOBLPoolAsSchedules(rng);
+        System.out.println("Generated candidate schedules: " + pool.length);
+
+        System.out.println("\n=== 2. Step B: Multi-Objective Fitness Evaluation ===");
+        FitnessEvaluator evaluator = new FitnessEvaluator(0.4, 0.3, 0.3);
+        evaluator.evaluateAll(pool, taskDurations, vms);
+        System.out.println("All 100 schedules evaluated and normalized.");
+
+        System.out.println("\n=== 3. Step C: Elite Seeding (Top 30 -> Generation 0) ===");
+        org.cloudscheduler.model.Schedule[] genZero = EliteSelector.selectGenerationZero(pool);
+        System.out.println("Elite Generation 0 size: " + genZero.length);
+
+        System.out.println("\n--- Best Schedule in Generation 0 ---");
+        System.out.println("Task-to-VM Mapping: " + java.util.Arrays.toString(genZero[0].getTaskToVM()));
+        System.out.printf("Fitness F(i)       : %.4f\n", genZero[0].getFitness());
+        System.out.printf("Makespan           : %.2f s\n", genZero[0].getMakespan());
+        System.out.printf("Energy             : %.2f\n", genZero[0].getEnergy());
+        System.out.printf("Imbalance          : %.4f\n", genZero[0].getImbalance());
+
+        System.out.println("\n--- 30th Schedule (Cutoff for Gen 0) ---");
+        System.out.printf("Fitness F(i)       : %.4f\n", genZero[29].getFitness());
     }
 }

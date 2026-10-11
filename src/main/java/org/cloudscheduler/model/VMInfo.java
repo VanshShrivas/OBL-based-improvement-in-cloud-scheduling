@@ -13,8 +13,16 @@ public class VMInfo {
         this.processingPower = processingPower;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    public double getProcessingPower() {
+        return processingPower;
+    }
+
     @Override
     public String toString() {
-        return "VMInfo[id=" + id + ", power=" + processingPower + "]";
+        return String.format("VMInfo[id=%d, power=%.2f]", id, processingPower);
     }
 }

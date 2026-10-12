@@ -114,4 +114,65 @@ class SalpSwarmAlgorithmTest {
         assertTrue(result[0].fitness <= result[1].fitness,
             "Results should be sorted: " + result[0].fitness + " > " + result[1].fitness);
     }
+
+    @Test
+    void refine_appliesLeaderFollowerEquationsAndClipsToVmBounds() {
+        CapturingFitnessEvaluator evaluator = new CapturingFitnessEvaluator();
+        SalpSwarmAlgorithm algorithm = new SalpSwarmAlgorithm(evaluator);
+        Random rng = new SequenceRandom(
+            0.999999, 0.9,  // task 0: leader adds large step (upper clipping)
+            0.999999, 0.1,  // task 1: leader subtracts large step (lower clipping)
+            0.1,      0.9,  // task 2: leader adds moderate step (no clipping)
+            0.0,      0.9,
+            0.0,      0.9,
+            0.0,      0.9,
+            0.0,      0.9,
+            0.0,      0.9,
+            0.0,      0.9,
+            0.0,      0.9
+        );
+
+        algorithm.refine(elites, 0, 100, vms, taskDurations, rng);
+
+        int[] leader = evaluator.capturedAssignments[0];
+        int[] follower = evaluator.capturedAssignments[1];
+
+        assertEquals(4, leader[0], "Leader should be clipped to upper VM bound");
+        assertEquals(0, leader[1], "Leader should be clipped to lower VM bound");
+        assertEquals(3, leader[2], "Leader should follow c1/c2/c3 update equation");
+
+        assertEquals(4, follower[0], "Follower average should be clipped to upper VM bound");
+        assertEquals(0, follower[1], "Follower average should be clipped to lower VM bound");
+        assertEquals(2, follower[2], "Follower should average with preceding salp");
+    }
+
+    private static final class CapturingFitnessEvaluator extends FitnessEvaluator {
+        private int[][] capturedAssignments;
+
+        @Override
+        public void evaluateAll(Schedule[] pool, VMInfo[] vms, int[] taskDurations) {
+            capturedAssignments = new int[pool.length][];
+            for (int i = 0; i < pool.length; i++) {
+                capturedAssignments[i] = pool[i].taskToVM.clone();
+                pool[i].fitness = i;
+            }
+        }
+    }
+
+    private static final class SequenceRandom extends Random {
+        private final double[] values;
+        private int index = 0;
+
+        private SequenceRandom(double... values) {
+            this.values = values;
+        }
+
+        @Override
+        public double nextDouble() {
+            if (index >= values.length) {
+                return 0.0;
+            }
+            return values[index++];
+        }
+    }
 }

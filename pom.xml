@@ -19,11 +19,13 @@
     </properties>
 
     <dependencies>
-        <!-- CloudSim 3.0.3 -->
+        <!-- CloudSim 3.0.3 (bundled in lib/) -->
         <dependency>
             <groupId>org.cloudbus.cloudsim</groupId>
             <artifactId>cloudsim</artifactId>
             <version>3.0.3</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/cloudsim-3.0.3.jar</systemPath>
         </dependency>
 
         <dependency>

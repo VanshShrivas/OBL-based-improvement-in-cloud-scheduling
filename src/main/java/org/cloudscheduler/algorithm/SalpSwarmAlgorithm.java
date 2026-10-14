@@ -43,8 +43,8 @@ public class SalpSwarmAlgorithm {
                              VMInfo[] vms, int[] taskDurations, Random rng) {
         int numTasks = taskDurations.length;
         int numSalps = SimulationConfig.NUM_SALPS;
-        int lb = SimulationConfig.MIN_VM_INDEX;
-        int ub = SimulationConfig.MAX_VM_INDEX;
+        int lb = 0;
+        int ub = vms.length - 1;
 
         // Food source = best elite (elites[0])
         Schedule foodSource = elites[0];

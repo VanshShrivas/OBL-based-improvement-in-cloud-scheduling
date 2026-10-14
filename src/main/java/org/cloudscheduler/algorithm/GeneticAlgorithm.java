@@ -63,8 +63,8 @@ public class GeneticAlgorithm {
             Schedule[] children = twoPointCrossover(parent1, parent2, rng);
 
             // Mutation on each child
-            mutate(children[0], rng);
-            mutate(children[1], rng);
+            mutate(children[0], vms.length, rng);
+            mutate(children[1], vms.length, rng);
 
             // Add children to new population
             newPopulation[i] = children[0];
@@ -109,20 +109,15 @@ public class GeneticAlgorithm {
     /**
      * 2-point crossover: select two random cut points, swap the middle segment
      * between parents to produce two children.
-     * 
-     * Example (NUM_TASKS = 10, points = 3, 7):
-     *   Parent1: [0 1 2 | 3 4 0 1 | 2 3 4]
-     *   Parent2: [4 3 2 | 1 0 4 3 | 2 1 0]
-     *   Child1:  [0 1 2 | 1 0 4 3 | 2 3 4]  (middle from P2)
-     *   Child2:  [4 3 2 | 3 4 0 1 | 2 1 0]  (middle from P1)
      */
     private Schedule[] twoPointCrossover(Schedule parent1, Schedule parent2, Random rng) {
-        Schedule child1 = new Schedule(NUM_TASKS);
-        Schedule child2 = new Schedule(NUM_TASKS);
+        int numTasks = parent1.taskToVM.length;
+        Schedule child1 = new Schedule(numTasks);
+        Schedule child2 = new Schedule(numTasks);
 
         // Pick two distinct crossover points
-        int point1 = rng.nextInt(NUM_TASKS);
-        int point2 = rng.nextInt(NUM_TASKS);
+        int point1 = rng.nextInt(numTasks);
+        int point2 = rng.nextInt(numTasks);
 
         // Ensure point1 < point2
         if (point1 > point2) {
@@ -136,7 +131,7 @@ public class GeneticAlgorithm {
         }
 
         // Build children by swapping the segment [point1, point2)
-        for (int i = 0; i < NUM_TASKS; i++) {
+        for (int i = 0; i < numTasks; i++) {
             if (i >= point1 && i < point2) {
                 // Swap segment
                 child1.taskToVM[i] = parent2.taskToVM[i];
@@ -157,13 +152,13 @@ public class GeneticAlgorithm {
 
     /**
      * Mutation: for each task in the schedule, with probability MUTATION_RATE (0.1),
-     * reassign it to a random VM in [0, NUM_VMS - 1].
-     * This ensures all values stay within valid VM range.
+     * reassign it to a random VM in [0, numVMs - 1].
      */
-    private void mutate(Schedule schedule, Random rng) {
-        for (int i = 0; i < NUM_TASKS; i++) {
+    private void mutate(Schedule schedule, int numVMs, Random rng) {
+        int numTasks = schedule.taskToVM.length;
+        for (int i = 0; i < numTasks; i++) {
             if (rng.nextDouble() < MUTATION_RATE) {
-                schedule.taskToVM[i] = rng.nextInt(NUM_VMS);  // random VM in [0, 4]
+                schedule.taskToVM[i] = rng.nextInt(numVMs);
             }
         }
     }

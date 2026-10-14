@@ -62,10 +62,10 @@ public class OBLInitializer {
     }
 
     /*
-      Generates the 100 OBL candidate schedules wrapped as Schedule objects.
+      Generates the OBL candidate schedules wrapped as Schedule objects with dynamic sizes.
      */
-    public static org.cloudscheduler.model.Schedule[] generateOBLPoolAsSchedules(Random random) {
-        int[][] rawPool = generateOBLPool(random);
+    public static org.cloudscheduler.model.Schedule[] generateOBLPoolAsSchedules(int randomCount, int numTasks, int minVM, int maxVM, Random random) {
+        int[][] rawPool = generateOBLPool(randomCount, numTasks, minVM, maxVM, random);
         org.cloudscheduler.model.Schedule[] schedules = new org.cloudscheduler.model.Schedule[rawPool.length];
         for (int i = 0; i < rawPool.length; i++) {
             schedules[i] = new org.cloudscheduler.model.Schedule(rawPool[i]);
@@ -73,45 +73,15 @@ public class OBLInitializer {
         return schedules;
     }
 
+    /*
+      Generates the 100 OBL candidate schedules wrapped as Schedule objects using defaults.
+     */
+    public static org.cloudscheduler.model.Schedule[] generateOBLPoolAsSchedules(Random random) {
+        return generateOBLPoolAsSchedules(DEFAULT_RANDOM_COUNT, DEFAULT_NUM_TASKS, DEFAULT_MIN_VM, DEFAULT_MAX_VM, random);
+    }
+
     // Overloaded convenience method using project default parameters.
     public static int[][] generateOBLPool(Random random) {
         return generateOBLPool(DEFAULT_RANDOM_COUNT, DEFAULT_NUM_TASKS, DEFAULT_MIN_VM, DEFAULT_MAX_VM, random);
-    }
-
-        public static void main(String[] args) {
-        Random rng = new Random(42);
-
-        // 1. Synthetic dataset matching the paper (10 tasks between 10-100s, 5 VMs between 0.8-1.2)
-        double[] taskDurations = {22, 99, 62, 21, 70, 98, 12, 54, 33, 43}; // 10 tasks
-        org.cloudscheduler.model.VMInfo[] vms = new org.cloudscheduler.model.VMInfo[] {
-            new org.cloudscheduler.model.VMInfo(0, 1.01),
-            new org.cloudscheduler.model.VMInfo(1, 0.96),
-            new org.cloudscheduler.model.VMInfo(2, 0.97),
-            new org.cloudscheduler.model.VMInfo(3, 1.00),
-            new org.cloudscheduler.model.VMInfo(4, 0.86)
-        };
-
-        System.out.println("=== 1. Step A: OBL Pool Generation ===");
-        org.cloudscheduler.model.Schedule[] pool = generateOBLPoolAsSchedules(rng);
-        System.out.println("Generated candidate schedules: " + pool.length);
-
-        System.out.println("\n=== 2. Step B: Multi-Objective Fitness Evaluation ===");
-        FitnessEvaluator evaluator = new FitnessEvaluator(0.4, 0.3, 0.3);
-        evaluator.evaluateAll(pool, taskDurations, vms);
-        System.out.println("All 100 schedules evaluated and normalized.");
-
-        System.out.println("\n=== 3. Step C: Elite Seeding (Top 30 -> Generation 0) ===");
-        org.cloudscheduler.model.Schedule[] genZero = EliteSelector.selectGenerationZero(pool);
-        System.out.println("Elite Generation 0 size: " + genZero.length);
-
-        System.out.println("\n--- Best Schedule in Generation 0 ---");
-        System.out.println("Task-to-VM Mapping: " + java.util.Arrays.toString(genZero[0].getTaskToVM()));
-        System.out.printf("Fitness F(i)       : %.4f\n", genZero[0].getFitness());
-        System.out.printf("Makespan           : %.2f s\n", genZero[0].getMakespan());
-        System.out.printf("Energy             : %.2f\n", genZero[0].getEnergy());
-        System.out.printf("Imbalance          : %.4f\n", genZero[0].getImbalance());
-
-        System.out.println("\n--- 30th Schedule (Cutoff for Gen 0) ---");
-        System.out.printf("Fitness F(i)       : %.4f\n", genZero[29].getFitness());
     }
 }

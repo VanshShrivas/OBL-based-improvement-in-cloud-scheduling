@@ -1,1 +1,152 @@
-# OBL-based Improvement in Cloud Scheduling
+# ☁️ OBL-Enhanced HGA-SSA Cloud Task Scheduler in CloudSim
+
+An implementation of the **Opposition-Based Learning (OBL) Enhanced Hybrid Genetic Algorithm - Salp Swarm Algorithm (HGA-SSA)** for cloud task scheduling, validated using **CloudSim 3.0.3**.
+
+Extends and improves upon the benchmark paper:
+> *"Hybrid Metaheuristic-Based Cloud Task Scheduling Using Genetic Algorithm and Salp Swarm Algorithm"* (ICTCS 2025)
+
+---
+
+## 🏗️ System Architecture & Working Pipeline
+
+The project integrates metaheuristic optimization with discrete-event cloud datacenter simulation:
+
+```text
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                    PHASE 1: OBL POOL GENERATION                        │
+ │  Generate 50 random schedules + 50 opposite schedules (x̃ = min+max - x)│
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │              PHASE 2: MULTI-OBJECTIVE FITNESS EVALUATION               │
+ │    Evaluate Makespan, Energy, and Imbalance with Min-Max Normalization │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                        PHASE 3: ELITE SEEDING                          │
+ │         Sort 100 pool by fitness → Top 30 seed Generation 0            │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                PHASE 4: HYBRID GA-SSA EVOLUTION (100 GENS)             │
+ │  1. GA Evolution: Tournament Selection (size 3), 2-point crossover,    │
+ │     mutation (rate 0.1), elitism (top 2).                              │
+ │  2. SSA Swarm Refinement: 30 salp agents explore elite neighborhood    │
+ │     using decaying exploration c1 = 2·e^(-(4t/T)²).                    │
+ │  3. Population Update: Replace weakest individuals with refined salps. │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                 PHASE 5: CLOUDSIM SIMULATION VALIDATION                │
+ │  Feed optimal mapping into OBLHGASSABroker → CloudSim executes tasks   │
+ │  on heterogeneous VMs → Verifies actual cloud makespan vs calculated.  │
+ └────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📁 File Structure & Function Reference
+
+### 1. `algorithm/` (Core Optimization Engine)
+- **[`HybridGASSA.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/algorithm/HybridGASSA.java)**: **Master Optimizer**. Coordinates the 100-generation loop. Connects OBL initialization, GA evolution, SSA swarm refinement, and tracks convergence generations ($G_{\text{conv}}$) and elapsed times. Supports a toggle to run either baseline HGA-SSA or OBL+HGA-SSA.
+- **[`OBLInitializer.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/algorithm/OBLInitializer.java)**: **Opposition-Based Learning Engine**. Generates 50 random candidate schedules and mathematically constructs their 50 opposite schedules ($\tilde{x} = \text{minVM} + \text{maxVM} - x$) to seed a 100-candidate pool with high genetic diversity.
+- **[`FitnessEvaluator.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/algorithm/FitnessEvaluator.java)**: **Fitness Scoring & Normalization**. Computes Makespan, Energy, and Degree of Imbalance. Applies min-max normalization ($[0.0, 1.0]$) and calculates the weighted multi-objective score: $F(i) = \alpha \cdot \text{Makespan} + \beta \cdot \text{Energy} + \gamma \cdot \text{Imbalance}$.
+- **[`EliteSelector.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/algorithm/EliteSelector.java)**: **Elitism & Seeding**. Sorts candidate schedules by fitness ascending (lower is better) and extracts the top $N$ solutions (top 30 to seed Generation 0, or top 2 elites for SSA).
+- **[`GeneticAlgorithm.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/algorithm/GeneticAlgorithm.java)**: **GA Operators**. Implements Tournament Selection (size 3), 2-point crossover between parent pairs, mutation (rate 0.1), and elitism preservation with dynamic task and VM array bounds.
+- **[`SalpSwarmAlgorithm.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/algorithm/SalpSwarmAlgorithm.java)**: **SSA Swarm Local Search**. Spawns 30 salps around the top 2 elites. Moves the leader salp toward the food source using the decaying exploration parameter $c_1$ and follower salps in a chain. Discretizes continuous positions to valid integer VM indices.
+
+### 2. `broker/` (CloudSim Task Binding)
+- **[`OBLHGASSABroker.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/broker/OBLHGASSABroker.java)**: **Custom CloudSim Broker**. Extends CloudSim's `DatacenterBroker`. Receives the optimal task-to-VM mapping array generated by `HybridGASSA` and binds each Cloudlet to its designated VM before starting the cloud simulation.
+
+### 3. `simulation/` (Cloud Datacenter Infrastructure)
+- **[`CloudEnvironment.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/simulation/CloudEnvironment.java)**: **Virtual Hardware Factory**. Builds physical and virtual CloudSim infrastructure: Datacenter with a 32-core Host (64 GB RAM, 10 TB storage), heterogeneous VMs with power-scaled MIPS ($1000 \times \text{power}$), and Cloudlets (tasks) with lengths proportional to duration.
+- **[`MainSimulation.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/simulation/MainSimulation.java)**: **Single Simulation Entry Point**. Executes the standard 10-task / 5-VM simulation with CloudSim, validates actual execution finish times against calculated values, and exports results.
+- **[`MultiScenarioSimulation.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/simulation/MultiScenarioSimulation.java)**: **Multi-Scenario Benchmark Suite**. Runs 3 distinct cloud configurations (10, 25, and 50 tasks), executing each with both baseline HGA-SSA and OBL+HGA-SSA in CloudSim to evaluate makespan reduction and convergence speedup.
+
+### 4. `model/` & `metrics/` (Data Structures & Formulas)
+- **[`Schedule.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/model/Schedule.java)**: Encapsulates a candidate schedule mapping (`int[] taskToVM`) and its evaluated fitness, makespan, energy, and imbalance metrics.
+- **[`VMInfo.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/model/VMInfo.java)**: Represents heterogeneous VM metadata (ID, processing power factor $0.8 \dots 1.5$).
+- **[`MetricsCalculator.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/metrics/MetricsCalculator.java)**: Formulas for calculating Makespan ($\max(T_j)$), Total Energy Consumption ($\sum P_j \times T_j$), and Degree of Imbalance ($\frac{\max(T_j) - \min(T_j)}{T_{\text{avg}}}$).
+
+### 5. `config/` & `output/`
+- **[`SimulationConfig.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/config/SimulationConfig.java)**: Central configuration constants (weights $\alpha, \beta, \gamma$, population size 30, generations 100, seed 42).
+- **[`ResultExporter.java`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/src/main/java/org/cloudscheduler/output/ResultExporter.java)**: Exports simulation metrics to CSV format and generates summary text reports.
+
+### 6. `analysis/` (Python Visualization)
+- **[`plot_convergence.py`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/analysis/plot_convergence.py)**: Plots fitness & makespan reduction over 100 generations against the paper's 115.60s baseline.
+- **[`plot_multi_scenario.py`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/analysis/plot_multi_scenario.py)**: Generates 3-panel comparative convergence trajectory curves.
+- **[`compare_baseline.py`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/analysis/compare_baseline.py)**: Prints benchmark comparison against GA, SSA, and paper hybrid baseline.
+- **[`generate_tables.py`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/analysis/generate_tables.py)**: Formats task-to-VM allocation tables matching the research paper format.
+
+---
+
+## 🚀 How to Run & Get Results
+
+### Quick Start
+Run either script from the project root:
+
+- **PowerShell**:
+  ```powershell
+  .\run_simulation.ps1
+  ```
+- **Command Prompt / Double-Click**:
+  ```cmd
+  run_simulation.bat
+  ```
+
+The script will automatically compile Java files, run `MainSimulation`, run `MultiScenarioSimulation`, and execute Python plot generators.
+
+---
+
+### Manual Execution 
+
+1. **Compile**:
+   ```cmd
+   javac -encoding UTF-8 -cp "lib/cloudsim-3.0.3.jar" -d target/classes src/main/java/org/cloudscheduler/*/*.java src/main/java/org/cloudscheduler/*.java
+   ```
+
+2. **Run Single Simulation (MainSimulation)**:
+   ```cmd
+   java -cp "target/classes;lib/cloudsim-3.0.3.jar" org.cloudscheduler.simulation.MainSimulation
+   ```
+
+3. **Run Multi-Scenario Benchmark (MultiScenarioSimulation)**:
+   ```cmd
+   java -cp "target/classes;lib/cloudsim-3.0.3.jar" org.cloudscheduler.simulation.MultiScenarioSimulation
+   ```
+
+4. **Generate Plots & Tables**:
+   ```cmd
+   python analysis/plot_convergence.py
+   python analysis/plot_multi_scenario.py
+   python analysis/compare_baseline.py
+   python analysis/generate_tables.py
+   ```
+
+---
+
+## 📊 Where Results Are Stored
+
+All generated output files are written to the [`results/`](file:///c:/Users/Dell/Downloads/OBL-based-improvement-in-cloud-scheduling/results) directory:
+
+| Output File | Description |
+|---|---|
+| **`convergence_curve.png`** | Dual-axis graph of Fitness and Makespan over 100 generations vs. paper baseline. |
+| **`multi_scenario_convergence.png`** | 3-panel comparative convergence curves across 10, 25, and 50 task configurations. |
+| **`multi_scenario_comparison.csv`** | Numerical benchmark table recording initial Gen 0 quality, final makespan, and generations to convergence. |
+| **`multi_scenario_trajectories.csv`** | Generation-by-generation makespan history for baseline vs OBL across all scenarios. |
+| **`best_schedule.csv`** | Exact task-to-VM mapping, execution times, and VM power allocations. |
+| **`summary.txt`** | Text summary comparing our results against the published research paper. |
+
+---
+
+## 🏆 Key Benchmark Findings
+
+1. **Beating the Paper Baseline**:
+   - Paper Baseline Makespan: `115.60 s`
+   - Our OBL-Enhanced HGA-SSA: **`112.22 s`** *(CloudSim validated: `112.32 s`)* — **+2.92% faster**.
+2. **Accelerated Convergence Speed**:
+   - In 10 Tasks / 5 VMs: Baseline took **52 generations** to reach 123.6s; OBL matched that level by **Generation 6** (**8.6× faster**).
+   - In 50 Tasks / 10 VMs: Baseline reached 555.0s at **Generation 80**; OBL passed that mark at **Generation 42** and converged to **537.78s** (17.2s lower makespan).
+3. **Workload Balance**:
+   - Degree of Imbalance (DI) reduced to **`0.0756`**, ensuring all 5 VMs finish execution almost simultaneously.

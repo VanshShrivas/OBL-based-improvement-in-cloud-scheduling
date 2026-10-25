@@ -18,14 +18,24 @@ echo "=========================================================="
 case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
         CLASSPATH="target/classes;lib/cloudsim-3.0.3.jar"
+        VENV_PY="analysis/venv/Scripts/python.exe"
         ;;
     *)
         CLASSPATH="target/classes:lib/cloudsim-3.0.3.jar"
+        VENV_PY="analysis/venv/bin/python"
         ;;
 esac
 
 # Find a working Python executable.
-if command -v python >/dev/null 2>&1 && python --version >/dev/null 2>&1; then
+if [ -n "${VENV_PY:-}" ] && [ -f "$VENV_PY" ] && "$VENV_PY" --version >/dev/null 2>&1; then
+    PYTHON=("$VENV_PY")
+elif [ -f "analysis/venv/bin/python" ] && "analysis/venv/bin/python" --version >/dev/null 2>&1; then
+    PYTHON=("analysis/venv/bin/python")
+elif [ -f "analysis/venv/Scripts/python.exe" ] && "analysis/venv/Scripts/python.exe" --version >/dev/null 2>&1; then
+    PYTHON=("analysis/venv/Scripts/python.exe")
+elif command -v python3 >/dev/null 2>&1 && python3 --version >/dev/null 2>&1; then
+    PYTHON=(python3)
+elif command -v python >/dev/null 2>&1 && python --version >/dev/null 2>&1; then
     PYTHON=(python)
 elif command -v py >/dev/null 2>&1 && py -3 --version >/dev/null 2>&1; then
     PYTHON=(py -3)
@@ -33,6 +43,10 @@ else
     echo "[ERROR] Python 3 is not installed or not working."
     exit 1
 fi
+
+# Ensure matplotlib has a writable cache directory
+export MPLCONFIGDIR="${TMPDIR:-/tmp}/matplotlib_cache"
+mkdir -p "$MPLCONFIGDIR" 2>/dev/null || true
 
 echo "Using Python: ${PYTHON[*]}"
 "${PYTHON[@]}" --version

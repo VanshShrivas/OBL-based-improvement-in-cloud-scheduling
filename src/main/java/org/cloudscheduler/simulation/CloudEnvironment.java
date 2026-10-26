@@ -19,7 +19,6 @@ import java.util.List;
  *   - 5 VMs with MIPS = BASE_MIPS × processing_power
  *   - 10 Cloudlets with length = task_duration × BASE_MIPS
  *
- * This ensures CloudSim's computed execution time matches our formula:
  *   execution_time = cloudlet_length / vm_mips = (duration × 1000) / (power × 1000) = duration / power
  */
 public class CloudEnvironment {
@@ -76,13 +75,13 @@ public class CloudEnvironment {
     }
 
     /**
-     * Creates 5 VMs with MIPS proportional to processing power.
+     * Creates X VMs with MIPS proportional to processing power.
      *
      * VM 0 → 800 MIPS  (power 0.8)
      * VM 1 → 900 MIPS  (power 0.9)
      * VM 2 → 1000 MIPS (power 1.0)
      * VM 3 → 1100 MIPS (power 1.1)
-     * VM 4 → 1200 MIPS (power 1.2)
+     * VM 4 → 1200 MIPS (power 1.2) ...
      *
      * @param brokerId The ID of the broker that owns these VMs
      * @param powers   Array of processing powers [0.8, 0.9, 1.0, 1.1, 1.2]
@@ -107,7 +106,7 @@ public class CloudEnvironment {
     }
 
     /**
-     * Creates 10 Cloudlets (tasks) with length = duration × BASE_MIPS.
+     * Creates Y Cloudlets (tasks) with length = duration × BASE_MIPS.
      *
      * This ensures: execution_time = length / vm_mips = (duration × 1000) / (power × 1000) = duration / power
      *

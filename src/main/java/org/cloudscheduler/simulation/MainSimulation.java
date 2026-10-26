@@ -194,6 +194,20 @@ public class MainSimulation {
                 System.out.printf("  │ Benchmark Result                     │ %-36s │\n",
                         String.format("Within %.2fs of baseline", -gain));
             }
+
+            int genHitBaseline = -1;
+            for (ConvergencePoint cp : convergenceHistory) {
+                if (cp.makespan <= ResultExporter.BASELINE_MAKESPAN_SECONDS + 1e-4) {
+                    genHitBaseline = cp.generation;
+                    break;
+                }
+            }
+            double genDiffPct = genHitBaseline >= 0 ?
+                    ((double)(NUM_GENERATIONS - genHitBaseline) / NUM_GENERATIONS) * 100.0 : 0.0;
+            if (genHitBaseline >= 0) {
+                System.out.printf("  │ Convergence Gen Diff                 │ %-36s │\n",
+                        String.format("Gen %d vs 100 (+%.2f%% speedup)", genHitBaseline, genDiffPct));
+            }
             System.out.println("  └──────────────────────────────────────┴──────────────────────────────────────┘");
 
             // =====================================================================
@@ -203,7 +217,7 @@ public class MainSimulation {
             String resultsDir = ResultExporter.DEFAULT_RESULTS_DIR;
             ResultExporter.exportConvergence(convergenceHistory, resultsDir + "/convergence.csv");
             ResultExporter.exportBestSchedule(bestSchedule, vms, taskDurations, resultsDir + "/best_schedule.csv");
-            ResultExporter.exportSummary(bestSchedule, optimizationTime, resultsDir + "/summary.txt");
+            ResultExporter.exportSummary(bestSchedule, optimizationTime, resultsDir + "/summary.txt", genHitBaseline, genDiffPct);
 
             System.out.println("  [OK] Exported: results/convergence.csv");
             System.out.println("  [OK] Exported: results/best_schedule.csv");

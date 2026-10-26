@@ -104,6 +104,10 @@ public class ResultExporter {
      * @param filePath         Target file path (e.g., "results/summary.txt")
      */
     public static void exportSummary(Schedule bestSchedule, long optimizationTimeMs, String filePath) throws IOException {
+        exportSummary(bestSchedule, optimizationTimeMs, filePath, -1, 0.0);
+    }
+
+    public static void exportSummary(Schedule bestSchedule, long optimizationTimeMs, String filePath, int genHitBaseline, double genDiffPct) throws IOException {
         ensureParentDirectoryExists(filePath);
         double makespanReduction = ((BASELINE_MAKESPAN_SECONDS - bestSchedule.getMakespan()) / BASELINE_MAKESPAN_SECONDS) * 100.0;
         double optTimeSeconds = optimizationTimeMs / 1000.0;
@@ -127,6 +131,10 @@ public class ResultExporter {
                 writer.printf(Locale.US, "  - Makespan Improvement         : %.2f%% REDUCTION (Outperformed baseline)%n", makespanReduction);
             } else {
                 writer.printf(Locale.US, "  - Makespan Difference          : %.2f%%%n", makespanReduction);
+            }
+            if (genHitBaseline >= 0) {
+                writer.printf(Locale.US, "  - Convergence Target Reached   : Generation %d / 100 (Gen Diff: +%.2f%% speedup)%n",
+                        genHitBaseline, genDiffPct);
             }
             writer.println("================================================================================");
         }

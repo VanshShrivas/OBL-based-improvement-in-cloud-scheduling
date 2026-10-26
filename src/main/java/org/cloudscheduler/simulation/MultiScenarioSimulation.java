@@ -44,6 +44,7 @@ public class MultiScenarioSimulation {
         public int genOBLHitsBaseline;   // Generation where OBL achieves what Baseline took 100 gens to get
         public int gaSsaConvGen;
         public int oblConvGen;
+        public double genDiffPct;
         public long gaSsaTotalTimeMs;
         public long oblTotalTimeMs;
 
@@ -65,21 +66,21 @@ public class MultiScenarioSimulation {
         // ---------------------------------------------------------------------
         double[] powers1 = { 0.8, 0.9, 1.0, 1.1, 1.2 };
         int[] tasks1 = { 88, 43, 58, 48, 36, 14, 88, 13, 65, 90 };
-        results.add(runScenario("Small (10T, 5VM)", powers1, tasks1, 42L));
+        results.add(runScenario("Small (10T/5VM)", powers1, tasks1, 42L));
 
         // ---------------------------------------------------------------------
         // Scenario 2: Medium Workload (25 Tasks, 5 Heterogeneous VMs)
         // ---------------------------------------------------------------------
         double[] powers2 = { 0.6, 0.8, 1.0, 1.2, 1.5 };
         int[] tasks2 = generateTasks(25, 20, 150, new Random(101));
-        results.add(runScenario("Medium (25T, 5VM)", powers2, tasks2, 101L));
+        results.add(runScenario("Medium (25T/5VM)", powers2, tasks2, 101L));
 
         // ---------------------------------------------------------------------
         // Scenario 3: Large Workload (50 Tasks, 10 Heterogeneous VMs)
         // ---------------------------------------------------------------------
         double[] powers3 = { 0.5, 0.7, 0.8, 1.0, 1.0, 1.2, 1.4, 1.5, 1.8, 2.0 };
         int[] tasks3 = generateTasks(50, 15, 200, new Random(202));
-        results.add(runScenario("Large (50T, 10VM)", powers3, tasks3, 202L));
+        results.add(runScenario("Large (50T/10VM)", powers3, tasks3, 202L));
 
         // ---------------------------------------------------------------------
         // Print Summary Table
@@ -159,12 +160,15 @@ public class MultiScenarioSimulation {
         }
         if (r.genOBLHitsBaseline == -1) r.genOBLHitsBaseline = oblHist.size() - 1;
 
+        int genDiff = r.gaSsaConvGen - r.genOBLHitsBaseline;
+        r.genDiffPct = r.gaSsaConvGen > 0 ? ((double) genDiff / r.gaSsaConvGen) * 100.0 : 0.0;
+
         System.out.printf("  • Gen 0 Initial Quality : Baseline %6.1fs vs OBL %6.1fs (OBL starts %+.1f%% better)\n",
                 r.gaSsaGen0Makespan, r.oblGen0Makespan, r.initialImprovementPct);
         System.out.printf("  • Final Makespan Target : Baseline %6.2fs vs OBL %6.2fs (Makespan Gain: %+.2f%%)\n",
                 r.gaSsaMakespanCalc, r.oblMakespanCalc, r.makespanReductionPct);
-        System.out.printf("  • Convergence Speedup   : OBL reached Baseline target in Gen %d (Baseline took Gen %d)\n\n",
-                r.genOBLHitsBaseline, r.gaSsaConvGen);
+        System.out.printf("  • Convergence Speedup   : OBL reached Baseline target in Gen %d vs Gen %d (Gen Diff: %+d gens, %+.2f%%)\n\n",
+                r.genOBLHitsBaseline, r.gaSsaConvGen, genDiff, r.genDiffPct);
 
         return r;
     }
@@ -215,20 +219,21 @@ public class MultiScenarioSimulation {
 
     private static void printSummary(List<ScenarioResult> list) {
         System.out.println("\n  FINAL BENCHMARK SUMMARY: Baseline HGA-SSA vs. Proposed OBL+HGA-SSA");
-        System.out.println("  ┌──────────────────────┬────────────┬─────────────────────┬──────────┐");
-        System.out.println("  │ Scenario             │ Scale      │ Final Makespan (s)  │ Gain (%) │");
-        System.out.println("  │                      │            │ Baseline / OBL      │          │");
-        System.out.println("  ├──────────────────────┼────────────┼─────────────────────┼──────────┤");
+        System.out.println("  ┌──────────────────┬───────────┬─────────────────────┬────────────┬───────────┐");
+        System.out.println("  │ Scenario         │ Scale     │ Final Makespan (s)  │   Makespan │ Gen Diff% │");
+        System.out.println("  │ Configuration    │           │ Baseline / OBL      │   Gain (%) │ (Speedup) │");
+        System.out.println("  ├──────────────────┼───────────┼─────────────────────┼────────────┼───────────┤");
 
         for (ScenarioResult r : list) {
             String scaleStr = String.format("%dT / %dVM", r.numTasks, r.numVMs);
             String finalStr = String.format("%7.2f / %7.2f", r.gaSsaMakespanCalc, r.oblMakespanCalc);
             String gainStr  = String.format("%+.2f%%", r.makespanReductionPct);
+            String speedStr = String.format("%+.2f%%", r.genDiffPct);
 
-            System.out.printf("  │ %-20s │ %-10s │ %-19s │ %8s │\n",
-                    r.scenarioName, scaleStr, finalStr, gainStr);
+            System.out.printf("  │ %-16s │ %-9s │ %-19s │ %10s │ %9s │\n",
+                    r.scenarioName, scaleStr, finalStr, gainStr, speedStr);
         }
-        System.out.println("  └──────────────────────┴────────────┴─────────────────────┴──────────┘");
+        System.out.println("  └──────────────────┴───────────┴─────────────────────┴────────────┴───────────┘");
     }
 
     private static void exportResultsCSV(List<ScenarioResult> list, String filename) {
@@ -236,14 +241,14 @@ public class MultiScenarioSimulation {
             File f = new File(filename);
             f.getParentFile().mkdirs();
             try (PrintWriter pw = new PrintWriter(new FileWriter(f))) {
-                pw.println("scenario,tasks,vms,base_gen0_makespan,obl_gen0_makespan,base_final_makespan,obl_final_makespan,base_cloudsim_makespan,obl_cloudsim_makespan,makespan_reduction_pct,gen_obl_hits_baseline,base_conv_gen");
+                pw.println("scenario,tasks,vms,base_gen0_makespan,obl_gen0_makespan,base_final_makespan,obl_final_makespan,base_cloudsim_makespan,obl_cloudsim_makespan,makespan_reduction_pct,gen_obl_hits_baseline,base_conv_gen,gen_diff_pct");
                 for (ScenarioResult r : list) {
-                    pw.printf(Locale.US, "%s,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d\n",
+                    pw.printf(Locale.US, "%s,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d,%.2f\n",
                             r.scenarioName, r.numTasks, r.numVMs,
                             r.gaSsaGen0Makespan, r.oblGen0Makespan,
                             r.gaSsaMakespanCalc, r.oblMakespanCalc,
                             r.gaSsaMakespanCloudSim, r.oblMakespanCloudSim,
-                            r.makespanReductionPct, r.genOBLHitsBaseline, r.gaSsaConvGen);
+                            r.makespanReductionPct, r.genOBLHitsBaseline, r.gaSsaConvGen, r.genDiffPct);
                 }
             }
             System.out.println("  [OK] Exported summary: " + filename);

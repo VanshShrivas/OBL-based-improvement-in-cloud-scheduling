@@ -58,7 +58,7 @@ def plot_trajectories():
                  fontsize=14, fontweight="bold", y=1.02)
     plt.tight_layout()
     plt.savefig(OUTPUT_PNG, dpi=300, bbox_inches="tight")
-    print(f"Convergence trajectories plot saved to: {OUTPUT_PNG}")
+    print(f"  [OK] Multi-Scenario Convergence Plot (300 DPI) saved to: {OUTPUT_PNG}")
 
 if __name__ == "__main__":
     plot_trajectories()

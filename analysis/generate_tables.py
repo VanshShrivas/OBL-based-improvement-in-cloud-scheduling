@@ -56,16 +56,16 @@ def generate_schedule_table(csv_path=DEFAULT_CSV_PATH):
 
     table_df = pd.DataFrame(table_rows)
 
-    print("\n" + "=" * 88)
-    print("  TABLE: TASK ALLOCATION AND VM EXECUTION TIMES (OBL-ENHANCED HGA-SSA)")
-    print("  (Matches format of Tables II–IV from ICTCS 2025 Paper)")
-    print("=" * 88)
+    print("\n┌────────────────────────────────────────────────────────────────────────────────────────┐")
+    print("│ TABLE: TASK ALLOCATION AND VM EXECUTION TIMES (OBL-ENHANCED HGA-SSA)                   │")
+    print("│ Matches Format of Empirical Tables II–IV from ICTCS 2025 Paper                         │")
+    print("└────────────────────────────────────────────────────────────────────────────────────────┘")
     print(table_df.to_string(index=False))
-    print("=" * 88)
+    print("─" * 90)
 
     # Compute and display overall makespan
     makespan = max(vm_groups[v]["total_time"] for v in all_vm_ids)
-    print(f"\nFinal Makespan (Max VM Execution Time): {makespan:.2f} seconds\n")
+    print(f"  [OK] Final Realized Makespan (Bottleneck VM Execution Time): {makespan:.2f} seconds\n")
 
 
 if __name__ == "__main__":

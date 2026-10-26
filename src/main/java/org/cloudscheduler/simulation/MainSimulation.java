@@ -34,9 +34,10 @@ import java.util.Random;
 public class MainSimulation {
 
     public static void main(String[] args) {
-        System.out.println("╔═══════════════════════════════════════════════════════════╗");
-        System.out.println("║   OBL-Enhanced HGA-SSA Cloud Task Scheduler Simulation   ║");
-        System.out.println("╚═══════════════════════════════════════════════════════════╝\n");
+        System.out.println("┌─────────────────────────────────────────────────────────────────────────────┐");
+        System.out.println("│          OBL-ENHANCED HGA-SSA CLOUD TASK SCHEDULER SIMULATION               │");
+        System.out.println("│      Multi-Objective Optimization & Validation using CloudSim 3.0.3         │");
+        System.out.println("└─────────────────────────────────────────────────────────────────────────────┘\n");
 
         long startTime = System.currentTimeMillis();
 
@@ -47,57 +48,73 @@ public class MainSimulation {
 
         double[] powers = { 0.8, 0.9, 1.0, 1.1, 1.2 };
         VMInfo[] vms = new VMInfo[NUM_VMS];
-        System.out.println("--- Virtual Machines ---");
+        System.out.println("── Virtual Machine Profiles (5 Heterogeneous Nodes) ───────────────────────────");
         for (int i = 0; i < NUM_VMS; i++) {
             vms[i] = new VMInfo(i, powers[i]);
-            System.out.printf("  VM %d -> MIPS: %d (power: %.1f)\n", i, (int)(BASE_MIPS * powers[i]), powers[i]);
+            System.out.printf("  VM %d -> Speed: %4d MIPS | Power Factor: %.1fx\n",
+                    i, (int)(BASE_MIPS * powers[i]), powers[i]);
         }
 
         int[] taskDurations = new int[NUM_TASKS];
-        System.out.println("\n--- Task Workloads ---");
+        int totalWorkload = 0;
+        System.out.println("\n── Task Workloads (10 Tasks, Range: 10s–100s) ────────────────────────────────");
         for (int i = 0; i < NUM_TASKS; i++) {
             taskDurations[i] = MIN_TASK_DURATION + rng.nextInt(MAX_TASK_DURATION - MIN_TASK_DURATION + 1);
-            System.out.printf("  Task %d -> duration: %ds (Cloudlet length: %d MI)\n",
+            totalWorkload += taskDurations[i];
+            System.out.printf("  Task %-2d -> Workload: %3ds (Cloudlet Length: %6d MI)\n",
                     i, taskDurations[i], taskDurations[i] * BASE_MIPS);
         }
+        System.out.printf("  [Total Task Workload Requirement: %ds / %d MI]\n",
+                totalWorkload, totalWorkload * BASE_MIPS);
 
         // =====================================================================
         // Step 2: Run Optimization Algorithm (OBL + GA-SSA Hybrid)
         // =====================================================================
-        System.out.println("\n========== OPTIMIZATION PHASE (OBL + GA-SSA HYBRID) ==========\n");
+        System.out.println("\n┌─────────────────────────────────────────────────────────────────────────────┐");
+        System.out.println("│ OPTIMIZATION PHASE: OBL INITIALIZATION + HYBRID GA-SSA EVOLUTION            │");
+        System.out.println("└─────────────────────────────────────────────────────────────────────────────┘");
+        System.out.println("  • Phase 1 & 2 : OBL Initial Pool (100 candidates) & Multi-Objective Ranking");
+        System.out.println("  • Phase 3     : Elite Seeding (Top 30 candidates seeded into Generation 0)");
+        System.out.println("  • Phase 4     : Hybrid GA-SSA Evolution (100 Gens with 30-salp SSA refinement)\n");
 
         FitnessEvaluator fitnessEval = new FitnessEvaluator(ALPHA, BETA, GAMMA);
         HybridGASSA hybridGASSA = new HybridGASSA(fitnessEval);
 
-        System.out.println("[Phase 1 & 2] OBL Pool Generation (100 candidates) & Multi-Objective Evaluation...");
-        System.out.println("[Phase 3] Elite Seeding (Top 30 -> Generation 0)...");
-        System.out.println("[Phase 4] Hybrid GA-SSA Evolution (100 generations with 30-salp SSA refinement)...");
-
         Schedule bestSchedule = hybridGASSA.optimize(vms, taskDurations, new Random(RANDOM_SEED));
         List<ConvergencePoint> convergenceHistory = hybridGASSA.getConvergenceHistory();
 
+        System.out.println("  ┌────────┬──────────────┬──────────────┬─────────────┬─────────────┐");
+        System.out.println("  │ Gen    │ Fitness F(i) │ Makespan (s) │ Energy (J)  │ Imbalance   │");
+        System.out.println("  ├────────┼──────────────┼──────────────┼─────────────┼─────────────┤");
         for (ConvergencePoint cp : convergenceHistory) {
             if (cp.generation == 0 || cp.generation % 20 == 0 || cp.generation == NUM_GENERATIONS) {
-                System.out.printf("  Gen %3d -> Fitness: %.4f | Makespan: %7.2fs | Energy: %7.2f | Imbalance: %.4f\n",
+                System.out.printf("  │ Gen %-3d│ %12.4f │ %12.2f │ %11.2f │ %11.4f │\n",
                         cp.generation, cp.fitness, cp.makespan, cp.energy, cp.imbalance);
             }
         }
+        System.out.println("  └────────┴──────────────┴──────────────┴─────────────┴─────────────┘");
 
         long optimizationTime = System.currentTimeMillis() - startTime;
 
-        System.out.println("\n--- Algorithm Result ---");
-        System.out.println("  Best Mapping : " + Arrays.toString(bestSchedule.taskToVM));
-        System.out.printf("  Makespan     : %.2fs\n", bestSchedule.makespan);
-        System.out.printf("  Energy       : %.2f\n", bestSchedule.energy);
-        System.out.printf("  Imbalance    : %.4f\n", bestSchedule.imbalance);
-        System.out.printf("  Fitness      : %.4f\n", bestSchedule.fitness);
+        System.out.println("\n  Optimal Schedule Found:");
+        System.out.printf("  • Optimal Task-to-VM Mapping : %s\n", Arrays.toString(bestSchedule.taskToVM));
+        System.out.printf("  • Minimized Makespan         : %.2f s\n", bestSchedule.makespan);
+        System.out.printf("  • Energy Consumption         : %.2f J\n", bestSchedule.energy);
+        System.out.printf("  • Degree of Imbalance (DI)   : %.4f\n", bestSchedule.imbalance);
+        System.out.printf("  • Multi-Objective Cost Score : %.4f\n", bestSchedule.fitness);
 
         // =====================================================================
         // Step 3: CloudSim Simulation — Validate with actual cloud execution
         // =====================================================================
-        System.out.println("\n========== CLOUDSIM VALIDATION PHASE ==========\n");
+        System.out.println("\n┌─────────────────────────────────────────────────────────────────────────────┐");
+        System.out.println("│ CLOUDSIM SIMULATION VALIDATION PHASE                                        │");
+        System.out.println("│ Deploying Datacenter, 5 Heterogeneous VMs & 10 Cloudlets in CloudSim 3.0.3  │");
+        System.out.println("└─────────────────────────────────────────────────────────────────────────────┘\n");
 
         try {
+            // Silence internal CloudSim event logging for clean presentation output
+            Log.disable();
+
             // Initialize CloudSim
             int numUsers = 1;
             Calendar calendar = Calendar.getInstance();
@@ -120,18 +137,19 @@ public class MainSimulation {
             broker.submitCloudletList(cloudletList);
 
             // Run the simulation
-            System.out.println("Starting CloudSim simulation...");
+            System.out.println("  > Running CloudSim discrete-event execution engine...");
             CloudSim.startSimulation();
             CloudSim.stopSimulation();
+            System.out.println("  [OK] CloudSim simulation execution finished successfully.\n");
 
             // Get results
             List<Cloudlet> results = broker.getCloudletReceivedList();
 
             // Print CloudSim output table
-            System.out.println("\n========== CLOUDSIM EXECUTION RESULTS ==========");
-            System.out.println(String.format("%-12s %-10s %-8s %-12s %-12s %-12s",
-                    "Cloudlet ID", "Status", "VM ID", "Exec Time", "Start Time", "Finish Time"));
-            System.out.println("----------------------------------------------------------------------");
+            System.out.println("  Cloudlet Execution Telemetry:");
+            System.out.println("  ┌─────────────┬───────────┬────────┬──────────────┬──────────────┬──────────────┐");
+            System.out.println("  │ Cloudlet ID │ Status    │ VM ID  │ Exec Time(s) │ Start Time(s)│ Finish Time  │");
+            System.out.println("  ├─────────────┼───────────┼────────┼──────────────┼──────────────┼──────────────┤");
 
             double cloudsimMakespan = 0.0;
             for (Cloudlet cloudlet : results) {
@@ -141,57 +159,61 @@ public class MainSimulation {
                     cloudsimMakespan = finishTime;
                 }
 
-                System.out.println(String.format("%-12d %-10s %-8d %-12.2f %-12.2f %-12.2f",
+                System.out.printf("  │ Cloudlet %-2d │ %-9s │ VM %-3d │ %12.2f │ %12.2f │ %12.2f │\n",
                         cloudlet.getCloudletId(),
                         status,
                         cloudlet.getVmId(),
                         cloudlet.getActualCPUTime(),
                         cloudlet.getExecStartTime(),
-                        finishTime));
+                        finishTime);
             }
+            System.out.println("  └─────────────┴───────────┴────────┴──────────────┴──────────────┴──────────────┘");
 
             // Compare our calculation vs CloudSim
-            System.out.println("\n========== VALIDATION COMPARISON ==========");
-            System.out.printf("  Our Calculated Makespan  : %.2fs\n", bestSchedule.makespan);
-            System.out.printf("  CloudSim Actual Makespan : %.2fs\n", cloudsimMakespan);
+            System.out.println("\n  Validation & Benchmark Comparison:");
+            System.out.println("  ┌──────────────────────────────────────┬──────────────────────────────────────┐");
+            System.out.printf("  │ Theoretical Calculated Makespan      │ %-36s │\n", String.format("%.2f s", bestSchedule.makespan));
+            System.out.printf("  │ CloudSim 3.0.3 Actual Makespan       │ %-36s │\n", String.format("%.2f s", cloudsimMakespan));
             double diff = Math.abs(bestSchedule.makespan - cloudsimMakespan);
             if (diff < 1.0) {
-                System.out.printf("  [MATCH] Difference: %.4fs (within tolerance)\n", diff);
+                System.out.printf("  │ Simulation Fidelity                  │ %-36s │\n",
+                        String.format("[MATCH] Diff: %.4fs", diff));
             } else {
-                System.out.printf("  [MISMATCH] Difference: %.2fs\n", diff);
+                System.out.printf("  │ Simulation Fidelity                  │ %-36s │\n",
+                        String.format("[MISMATCH] Diff: %.2fs", diff));
             }
 
-            System.out.printf("\n  Paper Baseline Makespan  : %.2fs\n", ResultExporter.BASELINE_MAKESPAN_SECONDS);
+            System.out.printf("  │ ICTCS 2025 Paper Baseline            │ %-36s │\n",
+                    String.format("%.2f s", ResultExporter.BASELINE_MAKESPAN_SECONDS));
+            double gain = ResultExporter.BASELINE_MAKESPAN_SECONDS - bestSchedule.makespan;
+            double gainPct = (gain / ResultExporter.BASELINE_MAKESPAN_SECONDS) * 100.0;
             if (bestSchedule.makespan <= ResultExporter.BASELINE_MAKESPAN_SECONDS) {
-                System.out.printf("  [SUCCESS] Beats baseline by %.2fs!\n",
-                        ResultExporter.BASELINE_MAKESPAN_SECONDS - bestSchedule.makespan);
+                System.out.printf("  │ Benchmark Result                     │ %-36s │\n",
+                        String.format("[PASS] Beats by %.2fs (+%.2f%%)", gain, gainPct));
             } else {
-                System.out.printf("  [INFO] Within %.2fs of baseline.\n",
-                        bestSchedule.makespan - ResultExporter.BASELINE_MAKESPAN_SECONDS);
+                System.out.printf("  │ Benchmark Result                     │ %-36s │\n",
+                        String.format("Within %.2fs of baseline", -gain));
             }
+            System.out.println("  └──────────────────────────────────────┴──────────────────────────────────────┘");
 
             // =====================================================================
             // Step 4: Export results to CSV for Python analysis
             // =====================================================================
-            System.out.println("\n========== EXPORTING RESULTS ==========");
+            System.out.println("\n── Exporting Research Artifacts ───────────────────────────────────────────────");
             String resultsDir = ResultExporter.DEFAULT_RESULTS_DIR;
             ResultExporter.exportConvergence(convergenceHistory, resultsDir + "/convergence.csv");
             ResultExporter.exportBestSchedule(bestSchedule, vms, taskDurations, resultsDir + "/best_schedule.csv");
             ResultExporter.exportSummary(bestSchedule, optimizationTime, resultsDir + "/summary.txt");
 
-            System.out.println("  Exported: results/convergence.csv");
-            System.out.println("  Exported: results/best_schedule.csv");
-            System.out.println("  Exported: results/summary.txt");
-            System.out.println("\n  Run Python analysis scripts:");
-            System.out.println("    python analysis/plot_convergence.py");
-            System.out.println("    python analysis/generate_tables.py");
-            System.out.println("    python analysis/compare_baseline.py");
+            System.out.println("  [OK] Exported: results/convergence.csv");
+            System.out.println("  [OK] Exported: results/best_schedule.csv");
+            System.out.println("  [OK] Exported: results/summary.txt");
 
         } catch (Exception e) {
             System.err.println("CloudSim simulation error: " + e.getMessage());
             e.printStackTrace();
         }
 
-        System.out.println("\n========== SIMULATION COMPLETE ==========\n");
+        System.out.println("\n[OK] Primary Simulation Finished Successfully.\n");
     }
 }

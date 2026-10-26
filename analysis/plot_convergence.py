@@ -30,8 +30,6 @@ def plot_convergence(csv_path=DEFAULT_CSV_PATH, output_img=OUTPUT_PLOT_PATH):
         print(f"Error: CSV is missing required columns: {required_cols - set(df.columns)}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Loaded convergence data: {len(df)} generations recorded.")
-
     # 3. Create High-Quality Dual-Axis Figure
     fig, ax1 = plt.subplots(figsize=(10, 6), dpi=300)
 
@@ -91,7 +89,7 @@ def plot_convergence(csv_path=DEFAULT_CSV_PATH, output_img=OUTPUT_PLOT_PATH):
     plt.tight_layout()
     os.makedirs(os.path.dirname(output_img), exist_ok=True)
     plt.savefig(output_img, dpi=300)
-    print(f"Convergence plot saved successfully to: {output_img}")
+    print(f"  [OK] Convergence Plot (300 DPI) saved to: {output_img}")
 
 
 if __name__ == "__main__":

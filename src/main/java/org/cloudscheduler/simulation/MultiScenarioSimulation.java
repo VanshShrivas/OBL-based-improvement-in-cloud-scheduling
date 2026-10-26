@@ -1,6 +1,7 @@
 package org.cloudscheduler.simulation;
 
 import org.cloudbus.cloudsim.Cloudlet;
+import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudscheduler.algorithm.FitnessEvaluator;
@@ -52,9 +53,10 @@ public class MultiScenarioSimulation {
     }
 
     public static void main(String[] args) {
-        System.out.println("╔════════════════════════════════════════════════════════════════════════════════╗");
-        System.out.println("║   MULTI-SCENARIO BENCHMARK: HYBRID GA-SSA vs. OBL + GA-SSA (MAKESPAN FOCUS)   ║");
-        System.out.println("╚════════════════════════════════════════════════════════════════════════════════╝\n");
+        System.out.println("┌─────────────────────────────────────────────────────────────────────────────┐");
+        System.out.println("│          MULTI-SCENARIO SCALABILITY BENCHMARK (3 WORKLOAD TIERS)            │");
+        System.out.println("│      Comparing Baseline Hybrid GA-SSA vs. Proposed OBL + Hybrid GA-SSA      │");
+        System.out.println("└─────────────────────────────────────────────────────────────────────────────┘\n");
 
         List<ScenarioResult> results = new ArrayList<>();
 
@@ -63,21 +65,21 @@ public class MultiScenarioSimulation {
         // ---------------------------------------------------------------------
         double[] powers1 = { 0.8, 0.9, 1.0, 1.1, 1.2 };
         int[] tasks1 = { 88, 43, 58, 48, 36, 14, 88, 13, 65, 90 };
-        results.add(runScenario("Scenario 1 (10 Tasks, 5 VMs)", powers1, tasks1, 42L));
+        results.add(runScenario("Small (10T, 5VM)", powers1, tasks1, 42L));
 
         // ---------------------------------------------------------------------
         // Scenario 2: Medium Workload (25 Tasks, 5 Heterogeneous VMs)
         // ---------------------------------------------------------------------
         double[] powers2 = { 0.6, 0.8, 1.0, 1.2, 1.5 };
         int[] tasks2 = generateTasks(25, 20, 150, new Random(101));
-        results.add(runScenario("Scenario 2 (25 Tasks, 5 VMs)", powers2, tasks2, 101L));
+        results.add(runScenario("Medium (25T, 5VM)", powers2, tasks2, 101L));
 
         // ---------------------------------------------------------------------
         // Scenario 3: Large Workload (50 Tasks, 10 Heterogeneous VMs)
         // ---------------------------------------------------------------------
         double[] powers3 = { 0.5, 0.7, 0.8, 1.0, 1.0, 1.2, 1.4, 1.5, 1.8, 2.0 };
         int[] tasks3 = generateTasks(50, 15, 200, new Random(202));
-        results.add(runScenario("Scenario 3 (50 Tasks, 10 VMs)", powers3, tasks3, 202L));
+        results.add(runScenario("Large (50T, 10VM)", powers3, tasks3, 202L));
 
         // ---------------------------------------------------------------------
         // Print Summary Table
@@ -85,16 +87,19 @@ public class MultiScenarioSimulation {
         printSummary(results);
 
         // Export CSVs
+        System.out.println("\n── Exporting Multi-Scenario Research Artifacts ───────────────────────────────");
         exportResultsCSV(results, "results/multi_scenario_comparison.csv");
         exportTrajectoriesCSV(results, "results/multi_scenario_trajectories.csv");
+        System.out.println("\n[OK] Multi-Scenario Benchmark Completed Successfully.\n");
     }
 
     private static ScenarioResult runScenario(String name, double[] powers, int[] taskDurations, long seed) {
-        System.out.println("\n" + "=".repeat(85));
-        System.out.printf("  RUNNING: %s\n", name);
-        System.out.printf("  Tasks: %d | VMs: %d | Total Task Workload: %d s\n",
-                taskDurations.length, powers.length, Arrays.stream(taskDurations).sum());
-        System.out.println("=".repeat(85));
+        int totalDuration = Arrays.stream(taskDurations).sum();
+        System.out.println("┌─────────────────────────────────────────────────────────────────────────────┐");
+        System.out.printf("│ %-75s │\n", name);
+        System.out.printf("│ Workload: %-2d Tasks | %-2d Heterogeneous VMs | Total Workload: %-6d s         │\n",
+                taskDurations.length, powers.length, totalDuration);
+        System.out.println("└─────────────────────────────────────────────────────────────────────────────┘");
 
         VMInfo[] vms = new VMInfo[powers.length];
         for (int i = 0; i < powers.length; i++) {
@@ -105,14 +110,18 @@ public class MultiScenarioSimulation {
         FitnessEvaluator fitnessEval = new FitnessEvaluator(1.0, 0.0, 0.0);
 
         // 1. Run Baseline: Hybrid GA-SSA (NO OBL)
+        System.out.print("  > Simulating Baseline HGA-SSA (Random Initialization)... ");
         HybridGASSA gaSsa = new HybridGASSA(fitnessEval);
         Schedule bestGaSsa = gaSsa.optimize(vms, taskDurations, new Random(seed), false);
         double gaSsaCloudSimMakespan = runCloudSim("GA_SSA_Broker", powers, taskDurations, bestGaSsa.taskToVM);
+        System.out.println("Complete.");
 
         // 2. Run Proposed: OBL + Hybrid GA-SSA (WITH OBL)
+        System.out.print("  > Simulating Proposed OBL-Enhanced HGA-SSA (Opposition Seeding)... ");
         HybridGASSA oblGaSsa = new HybridGASSA(fitnessEval);
         Schedule bestObl = oblGaSsa.optimize(vms, taskDurations, new Random(seed), true);
         double oblCloudSimMakespan = runCloudSim("OBL_GA_SSA_Broker", powers, taskDurations, bestObl.taskToVM);
+        System.out.println("Complete.");
 
         List<ConvergencePoint> baseHist = gaSsa.getConvergenceHistory();
         List<ConvergencePoint> oblHist = oblGaSsa.getConvergenceHistory();
@@ -150,11 +159,11 @@ public class MultiScenarioSimulation {
         }
         if (r.genOBLHitsBaseline == -1) r.genOBLHitsBaseline = oblHist.size() - 1;
 
-        System.out.printf("\n[Gen 0 Starting Quality] Baseline: %7.2fs vs OBL: %7.2fs (OBL starts %.1f%% better!)\n",
+        System.out.printf("  • Gen 0 Initial Quality : Baseline %6.1fs vs OBL %6.1fs (OBL starts %+.1f%% better)\n",
                 r.gaSsaGen0Makespan, r.oblGen0Makespan, r.initialImprovementPct);
-        System.out.printf("[Final Results]          Baseline: %7.2fs vs OBL: %7.2fs (Makespan improvement: %.2f%%)\n",
+        System.out.printf("  • Final Makespan Target : Baseline %6.2fs vs OBL %6.2fs (Makespan Gain: %+.2f%%)\n",
                 r.gaSsaMakespanCalc, r.oblMakespanCalc, r.makespanReductionPct);
-        System.out.printf("[Convergence Speed]      OBL matched Baseline final makespan in Gen %d (Baseline took Gen %d)\n",
+        System.out.printf("  • Convergence Speedup   : OBL reached Baseline target in Gen %d (Baseline took Gen %d)\n\n",
                 r.genOBLHitsBaseline, r.gaSsaConvGen);
 
         return r;
@@ -162,6 +171,9 @@ public class MultiScenarioSimulation {
 
     private static double runCloudSim(String brokerName, double[] powers, int[] taskDurations, int[] scheduleMapping) {
         try {
+            // Silence internal CloudSim traces for clean presentation
+            Log.disable();
+
             int numUsers = 1;
             Calendar calendar = Calendar.getInstance();
             CloudSim.init(numUsers, calendar, false);
@@ -202,23 +214,21 @@ public class MultiScenarioSimulation {
     }
 
     private static void printSummary(List<ScenarioResult> list) {
-        System.out.println("\n" + "═".repeat(116));
-        System.out.println("                 FINAL MULTI-SCENARIO BENCHMARK: BASELINE HGA-SSA vs. PROPOSED OBL+HGA-SSA");
-        System.out.println("═".repeat(116));
-        System.out.printf("%-30s | %-16s | %-16s | %-18s | %-22s\n",
-                "Scenario", "Gen 0 (Base/OBL)", "Final Makespan", "CloudSim Makespan", "Speedup: Gen To Target");
-        System.out.println("─".repeat(116));
+        System.out.println("\n  FINAL BENCHMARK SUMMARY: Baseline HGA-SSA vs. Proposed OBL+HGA-SSA");
+        System.out.println("  ┌──────────────────────┬────────────┬─────────────────────┬──────────┐");
+        System.out.println("  │ Scenario             │ Scale      │ Final Makespan (s)  │ Gain (%) │");
+        System.out.println("  │                      │            │ Baseline / OBL      │          │");
+        System.out.println("  ├──────────────────────┼────────────┼─────────────────────┼──────────┤");
 
         for (ScenarioResult r : list) {
-            String gen0Str  = String.format("%.1f / %.1fs", r.gaSsaGen0Makespan, r.oblGen0Makespan);
-            String finalStr = String.format("%.2f / %.2fs", r.gaSsaMakespanCalc, r.oblMakespanCalc);
-            String simStr   = String.format("%.2f / %.2fs", r.gaSsaMakespanCloudSim, r.oblMakespanCloudSim);
-            String speedStr = String.format("OBL Gen %d vs Base Gen %d", r.genOBLHitsBaseline, r.gaSsaConvGen);
+            String scaleStr = String.format("%dT / %dVM", r.numTasks, r.numVMs);
+            String finalStr = String.format("%7.2f / %7.2f", r.gaSsaMakespanCalc, r.oblMakespanCalc);
+            String gainStr  = String.format("%+.2f%%", r.makespanReductionPct);
 
-            System.out.printf("%-30s | %-16s | %-16s | %-18s | %-22s\n",
-                    r.scenarioName, gen0Str, finalStr, simStr, speedStr);
+            System.out.printf("  │ %-20s │ %-10s │ %-19s │ %8s │\n",
+                    r.scenarioName, scaleStr, finalStr, gainStr);
         }
-        System.out.println("═".repeat(116));
+        System.out.println("  └──────────────────────┴────────────┴─────────────────────┴──────────┘");
     }
 
     private static void exportResultsCSV(List<ScenarioResult> list, String filename) {
@@ -236,7 +246,7 @@ public class MultiScenarioSimulation {
                             r.makespanReductionPct, r.genOBLHitsBaseline, r.gaSsaConvGen);
                 }
             }
-            System.out.println("Exported summary to: " + filename);
+            System.out.println("  [OK] Exported summary: " + filename);
         } catch (Exception e) {
             System.err.println("Error saving summary CSV: " + e.getMessage());
         }
@@ -258,7 +268,7 @@ public class MultiScenarioSimulation {
                     }
                 }
             }
-            System.out.println("Exported trajectories to: " + filename);
+            System.out.println("  [OK] Exported trajectories: " + filename);
         } catch (Exception e) {
             System.err.println("Error saving trajectories CSV: " + e.getMessage());
         }

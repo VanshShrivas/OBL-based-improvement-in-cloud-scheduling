@@ -34,41 +34,40 @@ def compare_models(csv_path=DEFAULT_CSV_PATH):
     # Determine makespan from schedule file
     proposed_makespan = float(df["vm_total_time"].max())
 
-    print("\n" + "=" * 78)
-    print("   BENCHMARK COMPARISON: PROPOSED MODEL VS. PAPER RESULTS (TABLES V & VI)")
-    print("=" * 78)
+    print("\n┌─────────────────────────────────────────────────────────────────────────────┐")
+    print("│ BENCHMARK COMPARISON: PROPOSED MODEL VS. PAPER RESULTS (TABLES V & VI)      │")
+    print("└─────────────────────────────────────────────────────────────────────────────┘")
 
     comparison_data = []
 
     for model_name, baseline_makespan in PAPER_BENCHMARKS.items():
         reduction = ((baseline_makespan - proposed_makespan) / baseline_makespan) * 100.0
         comparison_data.append({
-            "Model": model_name,
+            "Algorithm / Model": model_name,
             "Makespan (s)": f"{baseline_makespan:.2f}",
-            "Reduction by Our Model (%)": f"{reduction:+.2f}%"
+            "Relative Improvement (%)": f"{reduction:+.2f}%"
         })
 
     # Add our proposed model row
     comparison_data.append({
-        "Model": "Proposed OBL-HGA-SSA (Ours)",
+        "Algorithm / Model": "Proposed OBL-HGA-SSA (Ours)",
         "Makespan (s)": f"{proposed_makespan:.2f}",
-        "Reduction by Our Model (%)": "Reference (0.00%)"
+        "Relative Improvement (%)": "Reference (0.00%)"
     })
 
     comp_df = pd.DataFrame(comparison_data)
     print(comp_df.to_string(index=False))
-    print("=" * 78)
+    print("─" * 78)
 
     # Paper comparison analysis
     paper_baseline = PAPER_BENCHMARKS["Baseline HGA-SSA (Paper)"]
     improvement_vs_paper = ((paper_baseline - proposed_makespan) / paper_baseline) * 100.0
 
     if proposed_makespan <= paper_baseline:
-        print(f"\n[PASS] Proposed model achieved a makespan of {proposed_makespan:.2f}s,")
-        print(f"       outperforming the paper's hybrid baseline of {paper_baseline:.2f}s by {improvement_vs_paper:.2f}%.")
+        print(f"  [SUCCESS] Proposed OBL-HGA-SSA achieved a makespan of {proposed_makespan:.2f}s,")
+        print(f"    outperforming the ICTCS 2025 hybrid baseline ({paper_baseline:.2f}s) by {improvement_vs_paper:.2f}%.\n")
     else:
-        print(f"\n[NOTE] Makespan is {proposed_makespan:.2f}s (Baseline was {paper_baseline:.2f}s).")
-    print()
+        print(f"  [NOTE] Makespan is {proposed_makespan:.2f}s (Paper baseline: {paper_baseline:.2f}s).\n")
 
 
 if __name__ == "__main__":

@@ -76,8 +76,6 @@ For a schedule mapping tasks $i \in \{0, \dots, n-1\}$ onto VMs $j \in \{0, \dot
 OBL-based-improvement-in-cloud-scheduling/
 ├── pom.xml                                  # Maven build configuration (Java 11, CloudSim, JUnit 5)
 ├── run_simulation.sh                        # Cross-platform Bash runner (Linux / macOS / Git Bash / WSL)
-├── run_simulation.ps1                       # Windows PowerShell runner
-├── run_simulation.bat                       # Windows Batch runner
 ├── lib/
 │   └── cloudsim-3.0.3.jar                   # Bundled CloudSim 3.0.3 library
 ├── src/
@@ -151,43 +149,28 @@ OBL-based-improvement-in-cloud-scheduling/
 
 ### Quick Start (Recommended)
 
-- **Linux / macOS / WSL / Git Bash**:
-  ```bash
-  ./run_simulation.sh
-  ```
-  Compiles all 15 Java source files, runs `MainSimulation` and `MultiScenarioSimulation`, and executes `generate_tables.py` and `compare_baseline.py` for clean terminal tables (auto-detecting `analysis/venv` if present).
+Run [run_simulation.sh](run_simulation.sh) from the project root (works on **Linux**, **macOS**, and **Windows via Git Bash / WSL**):
 
-- **Windows PowerShell**:
-  ```powershell
-  .\run_simulation.ps1
-  ```
+```bash
+./run_simulation.sh
+```
 
-- **Windows Command Prompt**:
-  ```cmd
-  run_simulation.bat
-  ```
+This compiles all 15 Java source files, runs `MainSimulation` and `MultiScenarioSimulation`, and executes `generate_tables.py` and `compare_baseline.py` for clean terminal tables (auto-detecting `analysis/venv` if present).
 
-> **Note:** [run_simulation.sh](run_simulation.sh) outputs formatted console tables and CSV/text reports without invoking matplotlib plots by default, whereas `run_simulation.ps1` and `run_simulation.bat` also run the plot scripts. You can generate plots anytime using the Python commands below.
+> **Note:** [run_simulation.sh](run_simulation.sh) outputs formatted console tables and CSV/text reports without invoking matplotlib plots by default. You can generate PNG plots manually anytime using the Python commands below.
 
 ### Manual Execution
 
 1. **Compile Java Sources**:
    ```bash
-   # Linux / macOS
+   # Linux / macOS / Git Bash / WSL
    mkdir -p target/classes
    javac -encoding UTF-8 -cp "lib/cloudsim-3.0.3.jar" -d target/classes $(find src/main/java -name '*.java')
-   ```
-   ```cmd
-   REM Windows CMD
-   if not exist target\classes mkdir target\classes
-   dir /s /b src\main\java\*.java > sources.txt
-   javac -encoding UTF-8 -cp "lib\cloudsim-3.0.3.jar" -d target\classes @sources.txt
-   del sources.txt
    ```
 
 2. **Run Primary Simulation & Multi-Scenario Benchmark**:
    ```bash
-   # Linux / macOS (use ';' instead of ':' in classpath on Windows)
+   # Use ';' instead of ':' in the classpath on Windows Git Bash / MSYS
    java -Dfile.encoding=UTF-8 -cp "target/classes:lib/cloudsim-3.0.3.jar" org.cloudscheduler.simulation.MainSimulation
    java -Dfile.encoding=UTF-8 -cp "target/classes:lib/cloudsim-3.0.3.jar" org.cloudscheduler.simulation.MultiScenarioSimulation
    ```
